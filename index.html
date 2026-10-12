@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Working Day Calculator</title>
+<style>
+/* Layout: iOS-style large title, one big readout card, then inset grouped lists for inputs, skipped days and settings. */
+:root{
+  --bg:#F2F2F7; --card:#FFFFFF; --sep:rgba(60,60,67,.18);
+  --label:#000000; --label2:rgba(60,60,67,.62);
+  --fill:rgba(118,118,128,.12);
+  --blue:#0071E3; --blue-tint:rgba(0,113,227,.12);
+  --red:#D70015; --green:#34C759;
+  --scrim:rgba(0,0,0,.35);
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,"Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#000000; --card:#1C1C1E; --sep:rgba(84,84,88,.65);
+  --label:#FFFFFF; --label2:rgba(235,235,245,.62);
+  --fill:rgba(118,118,128,.24);
+  --blue:#2997FF; --blue-tint:rgba(41,151,255,.2);
+  --red:#FF453A; --green:#30D158;
+  --scrim:rgba(0,0,0,.6); color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#000000; --card:#1C1C1E; --sep:rgba(84,84,88,.65);
+  --label:#FFFFFF; --label2:rgba(235,235,245,.62);
+  --fill:rgba(118,118,128,.24);
+  --blue:#2997FF; --blue-tint:rgba(41,151,255,.2);
+  --red:#FF453A; --green:#30D158;
+  --scrim:rgba(0,0,0,.6); color-scheme:dark;}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--label);font-family:var(--font);padding-inline:16px;padding-block:20px 56px;line-height:1.3;-webkit-font-smoothing:antialiased}
+button,input{font-family:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.page{max-width:680px;margin-inline:auto;display:flex;flex-direction:column;gap:20px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:8px}
+h1{margin:0;font-size:2.125rem;font-weight:700;letter-spacing:.01em;line-height:1.1;text-wrap:balance;min-width:0}
+.tools{display:flex;gap:10px;flex:none}
+.round{width:36px;height:36px;border-radius:999px;border:0;background:var(--blue-tint);color:var(--blue);display:grid;place-items:center;padding:0;cursor:pointer}
+
+/* readout */
+.readout{background:var(--card);border-radius:22px;display:flex;flex-direction:column;overflow:hidden}
+.cap{font-size:.8125rem;font-weight:500;color:var(--label2)}
+.hero-wrap{padding:18px 20px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.hero{display:flex;align-items:baseline;gap:10px;white-space:nowrap;color:var(--blue)}
+.hero span{font-size:clamp(5rem,27vw,9rem);font-weight:300;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.hero small,.val small{font-size:1.125rem;font-weight:500;color:var(--label2);letter-spacing:0}
+.split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid var(--sep)}
+.cell{padding:12px 20px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.cell+.cell{border-left:1px solid var(--sep)}
+.cellhead{display:flex;justify-content:space-between;gap:8px}
+.tint{color:var(--blue)}
+.val{display:flex;align-items:baseline;gap:8px;white-space:nowrap;color:var(--blue);font-size:clamp(2.25rem,9.5vw,3.5rem);font-weight:300;line-height:1.05;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.val span{font-size:inherit}
+.readout.late .hero,.readout.late .val,.readout.late .tint{color:var(--red)}
+.readout.late .hero small,.readout.late .val small{color:var(--label2)}
+
+/* grouped lists */
+.stack{display:flex;flex-direction:column;gap:20px}
+.group{background:var(--card);border-radius:12px;overflow:hidden}
+.item{display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 16px;position:relative}
+.item+.item::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:var(--sep)}
+.item label,.item .name{font-size:1.0625rem}
+.lab{display:flex;flex-direction:column;min-width:0;flex:none;width:92px}
+.dow{font-size:.8125rem;font-weight:600;color:var(--blue);min-height:1em}
+.ctl{height:36px;border:0;border-radius:8px;background:var(--fill);padding:0 10px;font-size:1.0625rem;min-width:0}
+input[type=date].ctl{flex:1}
+input.num{width:84px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.item .grow{flex:1}
+.pill{flex:none;height:34px;padding:0 14px;border-radius:999px;border:0;background:var(--blue-tint);color:var(--blue);font-size:.9375rem;font-weight:600;cursor:pointer}
+.pill:active{opacity:.6}
+
+.list{list-style:none;margin:0;padding:0;border-top:1px solid var(--sep)}
+.list li{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:8px 16px;font-size:1rem;position:relative}
+.list li+li::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:var(--sep)}
+.list .why{color:var(--label2);font-size:.9375rem;text-align:right}
+.date{font-variant-numeric:tabular-nums}
+
+/* settings sheet */
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:10}
+.sheet{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--bg);z-index:11;overflow-y:auto;padding:16px 16px calc(32px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:20px}
+.nav{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;min-height:44px}
+.nav h2{margin:0;font-size:1.0625rem;font-weight:600}
+.nav .done{justify-self:end;background:none;border:0;color:var(--blue);font-size:1.0625rem;font-weight:600;cursor:pointer;padding:8px 0 8px 12px}
+.sect{display:flex;flex-direction:column;gap:6px}
+.sect>.hd{font-size:.8125rem;text-transform:uppercase;letter-spacing:.02em;color:var(--label2);padding-inline:16px}
+.sect>.ft{font-size:.8125rem;color:var(--label2);padding-inline:16px}
+.switch{flex:none;position:relative;width:51px;height:31px;border-radius:999px;border:0;background:var(--fill);padding:0;cursor:pointer;transition:background .2s}
+.switch::after{content:"";position:absolute;left:2px;top:2px;width:27px;height:27px;border-radius:999px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.25);transition:transform .2s}
+.switch[aria-checked=true]{background:var(--green)}
+.switch[aria-checked=true]::after{transform:translateX(20px)}
+.off b{display:block;font-weight:500;font-size:1.0625rem}
+.off small{color:var(--label2);font-size:.875rem}
+.remove{background:none;border:0;color:var(--red);font-size:1rem;cursor:pointer;padding:8px 0 8px 8px}
+.addoff{display:flex;flex-direction:column;gap:8px;padding:12px 16px}
+.addoff .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.addoff .ctl{width:100%;height:40px}
+.addoff .pill{align-self:flex-start;height:36px}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<style>:root{color-scheme:light}[hidden]{display:none!important}body{margin:0}</style>
+</head>
+<body>
+
+<div class="page">
+  <header>
+    <h1>Working day calculator</h1>
+    <div class="tools">
+      <button type="button" class="round" id="theme-toggle" aria-label="Switch to dark mode">
+        <svg id="theme-moon" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></svg>
+        <svg id="theme-sun" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+      <button type="button" class="round" id="open-settings" aria-label="Settings" aria-haspopup="dialog">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <section class="readout" id="lcd" aria-label="Result" aria-live="polite">
+    <div class="hero-wrap">
+      <span class="cap">Working days</span>
+      <div class="hero"><span id="elapsed-num"></span><small id="elapsed-unit"></small></div>
+    </div>
+    <div class="split">
+      <div class="cell">
+        <div class="cellhead"><span class="cap">Due</span><span class="cap tint" id="due-dow"></span></div>
+        <div class="val"><span id="due-date"></span></div>
+      </div>
+      <div class="cell">
+        <span class="cap" id="left-label">Left</span>
+        <div class="val"><span id="left-num"></span><small id="left-unit"></small></div>
+      </div>
+    </div>
+  </section>
+
+  <main class="stack">
+    <div class="group">
+      <div class="item">
+        <div class="lab"><label for="start">Start date</label><span class="dow" id="start-dow"></span></div>
+        <input type="date" id="start" class="ctl">
+        <button type="button" class="pill" id="start-today">Today</button>
+      </div>
+      <div class="item">
+        <div class="lab"><label for="end">End date</label><span class="dow" id="end-dow"></span></div>
+        <input type="date" id="end" class="ctl">
+        <button type="button" class="pill" id="end-today">Today</button>
+      </div>
+      <div class="item">
+        <label for="days" class="grow">Add working days</label>
+        <input type="text" inputmode="numeric" pattern="[0-9]*" class="ctl num" id="days" value="20" maxlength="4">
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="sheet" id="drawer" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+  <div class="nav">
+    <span></span>
+    <h2 id="settings-title">Settings</h2>
+    <button type="button" class="done" id="close-settings">Done</button>
+  </div>
+
+  <div class="group"><div class="item"><span class="name grow" id="count-label">Count start date as day 1</span>
+    <button type="button" class="switch" id="count-start" role="switch" aria-checked="false" aria-labelledby="count-label"></button></div></div>
+
+  <div class="sect">
+    <span class="hd">Days off</span>
+    <div class="group">
+      <div id="off-list"></div>
+      <form class="addoff" id="off-form">
+        <div class="two">
+          <input type="date" id="off-from" class="ctl" aria-label="Days off from" required>
+          <input type="date" id="off-to" class="ctl" aria-label="Days off to">
+        </div>
+        <input type="text" id="off-label" class="ctl" aria-label="Days off label" placeholder="Label (optional)" maxlength="40">
+        <button type="submit" class="pill">Add days off</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="sect">
+    <span class="hd">NZ public holidays</span>
+    <div class="group"><ul class="list" id="hol-list" style="border-top:0"></ul></div>
+    <span class="ft">Matariki dates are built in to 2035.</span>
+  </div>
+</aside>
+
+<script>
+(function(){
+var DAY=86400000, DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var KEY='working-days-v1';
+function utc(y,m,d){return Date.UTC(y,m,d)/DAY}
+function dt(n){return new Date(n*DAY)}
+function dow(n){return dt(n).getUTCDay()}
+function iso(n){return dt(n).toISOString().slice(0,10)}
+function parse(s){if(!/^\d{4}-\d{2}-\d{2}$/.test(s||''))return null;var p=s.split('-').map(Number);return utc(p[0],p[1]-1,p[2])}
+function todayN(){var t=new Date();return utc(t.getFullYear(),t.getMonth(),t.getDate())}
+function short(n){var d=dt(n);return DOW[d.getUTCDay()]+' '+d.getUTCDate()+' '+MON[d.getUTCMonth()]}
+function plural(k){return Math.abs(k)===1?'day':'days'}
+
+/* NZ public holidays */
+var MATARIKI={2022:[5,24],2023:[6,14],2024:[5,28],2025:[5,20],2026:[6,10],2027:[5,25],2028:[6,14],2029:[6,6],2030:[5,21],2031:[6,11],2032:[6,2],2033:[5,24],2034:[6,7],2035:[5,29]};
+function easter(y){var a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;return utc(y,mo-1,da)}
+function nthMon(y,m,n){var d=utc(y,m,1);while(dow(d)!==1)d++;return d+7*(n-1)}
+function toMon(n){var w=dow(n);return w===6?n+2:w===0?n+1:n}
+var cache={};
+function holidays(y){
+  if(cache[y])return cache[y];
+  var h={}, e=easter(y);
+  var ny=utc(y,0,1), nyo=dow(ny)===6?ny+2:dow(ny)===0?ny+1:ny;
+  var da=utc(y,0,2), dao=(dow(da)===6||dow(da)===0)?da+2:da; if(dao===nyo)dao++;
+  h[nyo]="New Year's Day"; h[dao]="Day after New Year's Day";
+  h[toMon(utc(y,1,6))]='Waitangi Day';
+  h[e-2]='Good Friday'; h[e+1]='Easter Monday';
+  h[toMon(utc(y,3,25))]='Anzac Day';
+  h[nthMon(y,5,1)]="King's Birthday";
+  if(MATARIKI[y])h[utc(y,MATARIKI[y][0],MATARIKI[y][1])]='Matariki';
+  h[nthMon(y,9,4)]='Labour Day';
+  var xm=utc(y,11,25), bx=utc(y,11,26);
+  h[(dow(xm)===6||dow(xm)===0)?xm+2:xm]='Christmas Day';
+  h[(dow(bx)===6||dow(bx)===0)?bx+2:bx]='Boxing Day';
+  return cache[y]=h;
+}
+function holidayName(n){return holidays(dt(n).getUTCFullYear())[n]||null}
+
+/* state */
+var S={start:null,days:20,countStart:false,off:[]};
+try{var raw=JSON.parse(localStorage.getItem(KEY)||'null');if(raw){if(parse(raw.start))S.start=raw.start;if(isFinite(raw.days)&&raw.days>=0)S.days=Math.floor(raw.days);S.countStart=!!raw.countStart;if(Array.isArray(raw.off))S.off=raw.off.filter(function(o){return parse(o.from)&&parse(o.to)})}}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+
+function offLabel(n){for(var i=0;i<S.off.length;i++){var o=S.off[i];if(n>=parse(o.from)&&n<=parse(o.to))return o.label||'Day off'}return null}
+function reason(n){var w=dow(n);if(w===0||w===6)return 'Weekend';return holidayName(n)||offLabel(n)}
+
+function dueFrom(a,k){
+  var skipped=[];if(k<=0)return{due:a,skipped:skipped};
+  var d=S.countStart?a:a+1,c=0,guard=0;
+  while(guard++<5000){var r=reason(d);if(r){skipped.push({n:d,r:r})}else if(++c===k)return{due:d,skipped:skipped};d++}
+  return{due:d,skipped:skipped};
+}
+function between(lo,hi,includeLo){var c=0;for(var d=lo+1;d<=hi;d++)if(!reason(d))c++;if(includeLo&&!reason(lo))c++;return c}
+function signed(a,b,includeA){return b>=a?between(a,b,includeA):-between(b,a,includeA)}
+
+var $=function(id){return document.getElementById(id)};
+function group(list){
+  var out=[];
+  list.forEach(function(x){var l=out[out.length-1];if(l&&l.r===x.r&&x.n===l.to+1)l.to=x.n;else out.push({from:x.n,to:x.n,r:x.r})});
+  return out;
+}
+function range(g){
+  if(g.from===g.to)return short(g.from);
+  var a=dt(g.from),b=dt(g.to);
+  return a.getUTCMonth()===b.getUTCMonth()?DOW[a.getUTCDay()]+' '+a.getUTCDate()+' – '+short(g.to):short(g.from)+' – '+short(g.to);
+}
+
+function render(){
+  var a=parse($('start').value), e=parse($('end').value), t=todayN();
+  $('start-dow').textContent=a!==null?DOW[dow(a)]:'';
+  $('end-dow').textContent=e!==null?DOW[dow(e)]:'';
+  var k=parseInt($('days').value,10);
+  var lcd=$('lcd');
+  if(a===null||isNaN(k)||k<0){
+    $('due-date').textContent='--';$('due-dow').textContent='';lcd.classList.remove('late');
+    $('left-label').textContent='Left';$('left-num').textContent='--';$('left-unit').textContent='';
+  }else{
+    var r=dueFrom(a,k), left=signed(t,r.due,false), du=dt(r.due);
+    $('due-date').textContent=du.getUTCDate()+' '+MON[du.getUTCMonth()];
+    $('due-dow').textContent=DOW[du.getUTCDay()]+' '+du.getUTCFullYear();
+    lcd.classList.toggle('late',left<0);
+    $('left-label').textContent=left<0?'Overdue':'Left';
+    $('left-num').textContent=Math.abs(left);$('left-unit').textContent=plural(left);
+  }
+  if(a===null||e===null){$('elapsed-num').textContent='--';$('elapsed-unit').textContent=''}
+  else{var el=signed(a,e,S.countStart);$('elapsed-num').textContent=(el<0?'−':'')+Math.abs(el);$('elapsed-unit').textContent=plural(el)}
+}
+
+function renderSettings(){
+  $('count-start').setAttribute('aria-checked',String(S.countStart));
+  var ol=$('off-list');ol.innerHTML='';
+  S.off.forEach(function(o,i){
+    var row=document.createElement('div');row.className='item off';
+    var f=parse(o.from),to=parse(o.to),txt=document.createElement('div'),b=document.createElement('b'),sm=document.createElement('small');
+    txt.className='grow';b.textContent=range({from:f,to:to})+' '+dt(to).getUTCFullYear();sm.textContent=o.label||'';
+    txt.appendChild(b);if(o.label)txt.appendChild(sm);
+    var btn=document.createElement('button');btn.type='button';btn.className='remove';btn.textContent='Remove';btn.setAttribute('aria-label','Remove '+b.textContent);
+    btn.addEventListener('click',function(){S.off.splice(i,1);save();renderSettings();render()});
+    row.appendChild(txt);row.appendChild(btn);ol.appendChild(row);
+  });
+  var t=todayN(),y=dt(t).getUTCFullYear(),all=[];
+  [y,y+1].forEach(function(yy){var h=holidays(yy);Object.keys(h).forEach(function(k){if(+k>=t)all.push({n:+k,name:h[k]})})});
+  all.sort(function(a,b){return a.n-b.n});
+  var hl=$('hol-list');hl.innerHTML='';
+  all.slice(0,10).forEach(function(x){
+    var li=document.createElement('li'),s1=document.createElement('span'),s2=document.createElement('span');
+    s1.textContent=x.name;s2.className='why date';s2.textContent=short(x.n);li.appendChild(s1);li.appendChild(s2);hl.appendChild(li);
+  });
+}
+
+/* wiring */
+$('start').value=S.start||iso(todayN()-14);
+$('end').value=iso(todayN());
+$('days').value=S.days;
+$('start').addEventListener('input',function(){if(parse(this.value)){S.start=this.value;save()}render()});
+$('end').addEventListener('input',render);
+$('start-today').addEventListener('click',function(){$('start').value=iso(todayN());S.start=$('start').value;save();render()});
+$('end-today').addEventListener('click',function(){$('end').value=iso(todayN());render()});
+$('days').addEventListener('input',function(){this.value=this.value.replace(/\D/g,'');var k=parseInt(this.value,10);if(!isNaN(k)){S.days=k;save()}render()});
+
+/* light / dark toggle: follows the system until the viewer picks one */
+var root=document.documentElement, mq=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):{matches:false};
+function isDark(){var t=root.getAttribute('data-theme');return t?t==='dark':mq.matches}
+function applyTheme(){var d=isDark();$('theme-toggle').setAttribute('aria-label',d?'Switch to light mode':'Switch to dark mode');$('theme-sun').hidden=!d;$('theme-moon').hidden=d}
+try{var th=localStorage.getItem('working-days-theme');if(th==='dark'||th==='light')root.setAttribute('data-theme',th)}catch(e){}
+$('theme-toggle').addEventListener('click',function(){var n=isDark()?'light':'dark';root.setAttribute('data-theme',n);try{localStorage.setItem('working-days-theme',n)}catch(e){}applyTheme()});
+if(mq.addEventListener)mq.addEventListener('change',applyTheme);
+applyTheme();
+
+function openSettings(){renderSettings();$('scrim').hidden=false;$('drawer').hidden=false;$('close-settings').focus()}
+function closeSettings(){$('scrim').hidden=true;$('drawer').hidden=true;$('open-settings').focus()}
+$('open-settings').addEventListener('click',openSettings);
+$('close-settings').addEventListener('click',closeSettings);
+$('scrim').addEventListener('click',closeSettings);
+document.addEventListener('keydown',function(ev){if(ev.key==='Escape'&&!$('drawer').hidden)closeSettings()});
+$('count-start').addEventListener('click',function(){S.countStart=!S.countStart;save();renderSettings();render()});
+$('off-form').addEventListener('submit',function(ev){
+  ev.preventDefault();
+  var f=parse($('off-from').value),to=parse($('off-to').value);if(f===null)return;if(to===null)to=f;if(to<f){var x=f;f=to;to=x}
+  S.off.push({from:iso(f),to:iso(to),label:$('off-label').value.trim()});
+  S.off.sort(function(a,b){return a.from<b.from?-1:1});
+  $('off-from').value='';$('off-to').value='';$('off-label').value='';
+  save();renderSettings();render();
+});
+
+render();
+})();
+</script>
+
+</body>
+</html>
