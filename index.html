@@ -47,12 +47,14 @@ h1{margin:0;font-size:2.125rem;font-weight:700;letter-spacing:.01em;line-height:
 .hero{display:flex;align-items:baseline;gap:10px;white-space:nowrap;color:var(--blue)}
 .hero span{font-size:clamp(5rem,27vw,9rem);font-weight:300;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .hero small,.val small{font-size:1.125rem;font-weight:500;color:var(--label2);letter-spacing:0}
-.split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid var(--sep)}
-.cell{padding:12px 20px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.split{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--sep)}
+.cell{padding:12px 14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+@media(min-width:760px){.cell{padding-inline:20px}}
+.tf{width:100%;min-width:0;border:0;border-radius:10px;background:var(--fill);color:var(--blue);font-size:clamp(1.375rem,6.2vw,3rem);font-weight:300;line-height:1.1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;padding:0 8px}
 .cell+.cell{border-left:1px solid var(--sep)}
 .cellhead{display:flex;justify-content:space-between;gap:8px}
 .tint{color:var(--blue)}
-.val{display:flex;align-items:baseline;gap:8px;white-space:nowrap;color:var(--blue);font-size:clamp(2.25rem,9.5vw,3.5rem);font-weight:300;line-height:1.05;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.val{display:flex;align-items:baseline;gap:8px;white-space:nowrap;color:var(--blue);font-size:clamp(1.375rem,6.2vw,3rem);font-weight:300;line-height:1.1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .val span{font-size:inherit}
 .readout.late .hero,.readout.late .val,.readout.late .tint{color:var(--red)}
 .readout.late .hero small,.readout.late .val small{color:var(--label2)}
@@ -120,7 +122,7 @@ input.num{width:84px;text-align:right;font-variant-numeric:tabular-nums;font-wei
 
   <section class="readout" id="lcd" aria-label="Result" aria-live="polite">
     <div class="hero-wrap">
-      <span class="cap">Working days</span>
+      <span class="cap">Passed</span>
       <div class="hero"><span id="elapsed-num"></span><small id="elapsed-unit"></small></div>
     </div>
     <div class="split">
@@ -131,6 +133,10 @@ input.num{width:84px;text-align:right;font-variant-numeric:tabular-nums;font-wei
       <div class="cell">
         <span class="cap" id="left-label">Left</span>
         <div class="val"><span id="left-num"></span><small id="left-unit"></small></div>
+      </div>
+      <div class="cell">
+        <label class="cap" for="days">Working days</label>
+        <input type="text" inputmode="numeric" pattern="[0-9]*" class="tf" id="days" value="20" maxlength="4">
       </div>
     </div>
   </section>
@@ -146,10 +152,6 @@ input.num{width:84px;text-align:right;font-variant-numeric:tabular-nums;font-wei
         <div class="lab"><label for="end">End date</label><span class="dow" id="end-dow"></span></div>
         <input type="date" id="end" class="ctl">
         <button type="button" class="pill" id="end-today">Today</button>
-      </div>
-      <div class="item">
-        <label for="days" class="grow">Add working days</label>
-        <input type="text" inputmode="numeric" pattern="[0-9]*" class="ctl num" id="days" value="20" maxlength="4">
       </div>
     </div>
   </main>
@@ -273,7 +275,7 @@ function render(){
     $('left-num').textContent=Math.abs(left);$('left-unit').textContent=plural(left);
   }
   if(a===null||e===null){$('elapsed-num').textContent='--';$('elapsed-unit').textContent=''}
-  else{var el=signed(a,e,S.countStart);$('elapsed-num').textContent=(el<0?'−':'')+Math.abs(el);$('elapsed-unit').textContent=plural(el)}
+  else{var el=signed(a,e,S.countStart);$('elapsed-num').textContent=(el<0?'−':'')+Math.abs(el);$('elapsed-unit').textContent='working '+plural(el)}
 }
 
 function renderSettings(){
